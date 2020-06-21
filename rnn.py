@@ -1,142 +1,66 @@
-import numpy as np
+from keras.layers import Dense, Dropout, LSTM, Embedding
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import Sequential
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import mean_squared_error
-from keras.models import Sequential
-from keras.layers import LSTM
-from keras.layers.core import Dense
-import math
-
-traffic = pd.read_csv("sdn_datasets/train/train.200.csv")
-
-le = LabelEncoder()
-le.fit(traffic["label"].astype(str))
-
-traffic["label"] = le.transform(traffic["label"].astype(str))
-
-data_to_use = traffic["label"].values
-scaler = StandardScaler()
-scaled_data = scaler.fit_transform(data_to_use.reshape((-1, 1)))
-traffic["label"] = scaled_data
-
-X_train = traffic.drop(["label"], axis=1)
-traffic = pd.DataFrame.transpose(traffic)
-y_train = traffic.values[10]
-X_train = np.reshape(X_train.values, (X_train.values.shape[0], 1, X_train.values.shape[1]))
-print(X_train.shape)
-y_train = scaler.inverse_transform(y_train)
-y_train = np.array(y_train)[np.newaxis]
+import numpy as np
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import LabelEncoder
 
 
-# create and fit the LSTM network
-model = Sequential()
-model.add(LSTM(4, input_shape=(1, 10)))
-model.add(Dense(1))
-model.compile(loss='mean_squared_error', optimizer='adam')
-model.fit(X_train, y_train.T, epochs=200, batch_size=1, verbose=2)
+def load_data(filename):
+    print('Loading data...')
+    df = pd.read_csv(filename)
+    df = df.reindex(np.random.permutation(df.index))
+    X = np.array([list(map(float, df['dur'].values)),
+                  list(map(float, df['stddev'].values)),
+                  list(map(float, df['min'].values)),
+                  list(map(float, df['mean'].values)),
+                  list(map(float, df['spkts'].values)),
+                  list(map(float, df['dpkts'].values)),
+                  list(map(float, df['sbytes'].values)),
+                  list(map(float, df['dbytes'].values)),
+                  list(map(float, df['max'].values)),
+                  list(map(float, df['sum'].values))])
+    X = np.transpose(X)
+    print(X.shape)
+    y = df['label']
+    X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
+    print(X.shape)
+    le = LabelEncoder()
 
-trainPredict = model.predict(X_train)
-
-# calculate root mean squared error
-trainScore = math.sqrt(mean_squared_error(y_train[0], trainPredict[:, 0]))
-print('Train Score: %.2f RMSE' % trainScore)
-
-
-"""
-# LSTM for international airline passengers problem with regression framing
-import numpy
-import matplotlib.pyplot as plt
-from pandas import read_csv
-import math
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import LSTM
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
-# convert an array of values into a dataset matrix
-def create_dataset(dataset, look_back=1):
-	dataX, dataY = [], []
-	for i in range(len(dataset)-look_back-1):
-		a = dataset[i:(i+look_back), 0]
-		dataX.append(a)
-		dataY.append(dataset[i + look_back, 0])
-	return numpy.array(dataX), numpy.array(dataY)
-# fix random seed for reproducibility
-numpy.random.seed(7)
-# load the dataset
-dataframe = read_csv('sdn_datasets/airline-passengers.csv', usecols=[1], engine='python')
-dataset = dataframe.values
-dataset = dataset.astype('float32')
-# normalize the dataset
-scaler = MinMaxScaler(feature_range=(0, 1))
-dataset = scaler.fit_transform(dataset)
-# split into train and test sets
-train_size = int(len(dataset) * 0.67)
-test_size = len(dataset) - train_size
-train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
-# reshape into X=t and Y=t+1
-look_back = 1
-trainX, trainY = create_dataset(train, look_back)
-testX, testY = create_dataset(test, look_back)
-# reshape input to be [samples, time steps, features]
-trainX = numpy.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
-print(trainX.shape)
-testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
-# create and fit the LSTM network
-model = Sequential()
-model.add(LSTM(4, input_shape=(1, look_back)))
-model.add(Dense(1))
-model.compile(loss='mean_squared_error', optimizer='adam')
-model.fit(trainX, trainY, epochs=4, batch_size=1, verbose=2)
-# make predictions
-trainPredict = model.predict(trainX)
-testPredict = model.predict(testX)
-# invert predictions
-trainPredict = scaler.inverse_transform(trainPredict)
-trainY = scaler.inverse_transform([trainY])
-testPredict = scaler.inverse_transform(testPredict)
-testY = scaler.inverse_transform([testY])
-# calculate root mean squared error
-trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
-print('Train Score: %.2f RMSE' % (trainScore))
-testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
-print('Test Score: %.2f RMSE' % (testScore))
-# shift train predictions for plotting
-trainPredictPlot = numpy.empty_like(dataset)
-trainPredictPlot[:, :] = numpy.nan
-trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
-# shift test predictions for plotting
-testPredictPlot = numpy.empty_like(dataset)
-testPredictPlot[:, :] = numpy.nan
-testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
-# plot baseline and predictions
-plt.plot(scaler.inverse_transform(dataset))
-plt.plot(trainPredictPlot)
-plt.plot(testPredictPlot)
-plt.show()
+    y = le.fit_transform(y)
+    y = np.array(list(map(int, y)))
+    return pad_sequences(X), y
 
 
+def create_model(input_length):
+    print('Creating model...')
+    print(input_length)
+    model = Sequential()
+    # model.add(Embedding(input_dim=500000, output_dim=50, input_length=input_length))
+    model.add(LSTM(256, input_shape=(1, 10), activation='sigmoid',
+                   return_sequences=True, recurrent_activation='hard_sigmoid'))
+    model.add(LSTM(256, activation='sigmoid', recurrent_activation='hard_sigmoid', dropout=0.2))
+    model.add(Dense(6, activation='softmax'))
+
+    print('Compiling...')
+    model.compile(loss='sparse_categorical_crossentropy',
+                  optimizer='adam', metrics=['accuracy'])
+    return model
 
 
+X_train, y_train = load_data('sdn_datasets/train/train.200.csv')
+X_test, y_test = load_data('sdn_datasets/test/test.10000.csv')
 
-X_train, y_train = window_data(scaled_data, 15)
-X_train = np.array(X_train)
-y_train = np.array(y_train)
+model = create_model(len(X_train[0]))
 
-traffic = pd.read_csv("sdn_datasets/validation/val.100.csv")
-le = LabelEncoder()
-le.fit(traffic["label"].astype(str))
-traffic["label"] = le.transform(traffic["label"].astype(str))
-data_to_use = traffic["label"].values
-scaler = StandardScaler()
-scaled_data = scaler.fit_transform(data_to_use.reshape((-1, 1)))
+print('Fitting model...')
+hist = model.fit(X_train, y_train, batch_size=64, epochs=100, validation_split=0.3, verbose=1)
 
-X_test, y_test = window_data(scaled_data, 15)
-X_test = np.array(X_test)
-y_test = np.array(y_test)
+y_pred = model.predict_classes(X_test)
+print(y_pred)
+print(y_test)
 
-print("X_train size: {}".format(X_train.shape))
-print("y_train size: {}".format(y_train.shape))
-print("X_test size: {}".format(X_test.shape))
-print("y_test size: {}".format(y_test.shape))
-"""
+
+print('Test accuracy:', accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred, labels=[0, 1, 2, 3, 4, 5]))
