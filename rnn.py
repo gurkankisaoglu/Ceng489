@@ -49,13 +49,14 @@ def create_model(input_length):
     return model
 
 
-X_train, y_train = load_data('sdn_datasets/train/train.200.csv')
+X_train, y_train = load_data('sdn_datasets/train/train.100.csv')
 X_test, y_test = load_data('sdn_datasets/test/test.10000.csv')
+X_val, y_val = load_data('sdn_datasets/validation/val.100.csv')
 
 model = create_model(len(X_train[0]))
 
 print('Fitting model...')
-hist = model.fit(X_train, y_train, batch_size=64, epochs=100, validation_split=0.3, verbose=1)
+hist = model.fit(X_train, y_train, batch_size=64, epochs=100, verbose=1, validation_data=(X_val, y_val))
 
 y_pred = model.predict_classes(X_test)
 print(y_pred)
@@ -64,3 +65,13 @@ print(y_test)
 
 print('Test accuracy:', accuracy_score(y_test, y_pred))
 print(classification_report(y_test, y_pred, labels=[0, 1, 2, 3, 4, 5]))
+
+import matplotlib.pyplot as plt
+# summarize history for loss
+plt.plot(hist.history['loss'])
+plt.plot(hist.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()

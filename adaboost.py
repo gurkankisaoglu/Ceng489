@@ -7,7 +7,7 @@ from sklearn.ensemble import AdaBoostClassifier
 # import scikit-learn metrics module for accuracy calculation
 from sklearn.metrics import accuracy_score, classification_report
 
-network = pd.read_csv('sdn_datasets/train/train.1000.csv')
+network = pd.read_csv('sdn_datasets/train/train.100.csv')
 network2 = pd.read_csv('sdn_datasets/test/test.10000.csv')
 network.head()
 network.info()
@@ -38,3 +38,15 @@ y_pred = model.predict(X2)
 print("AdaBoost Classifier Model Accuracy:", accuracy_score(y2, y_pred))
 
 print(classification_report(y2, y_pred, labels=[0, 1, 2, 3, 4, 5]))
+
+print(model)
+
+# import matplotlib.pyplot as plt
+# # summarize history for loss
+# plt.plot(model.history['loss'])
+# plt.plot(model.history['val_loss'])
+# plt.title('model loss')
+# plt.ylabel('loss')
+# plt.xlabel('epoch')
+# plt.legend(['train', 'test'], loc='upper left')
+# plt.show()

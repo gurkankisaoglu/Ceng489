@@ -19,8 +19,9 @@ data_augmentation = False
 import numpy as np
 import h5py as hp
 
-traffic = pd.read_csv("sdn_datasets/train/train.200.csv")
+traffic = pd.read_csv("sdn_datasets/train/train.400.csv")
 testtraffic = pd.read_csv("sdn_datasets/validation/val.100.csv")
+#testtraffic = pd.read_csv("sdn_datasets/test/test.10000.csv")
 
 x_test = testtraffic.drop(["label"], axis=1)
 x_train = traffic.drop(["label"], axis=1)
@@ -45,15 +46,15 @@ x_train /= np.max(x_train)
 x_test /= np.max(x_test)
 
 ##### Autoencoder starts #####
-encoding_dim = 3
+encoding_dim = 6
 origin_dim = 10
 # "encoded" is the encoded representation of the input
 x = BatchNormalization()(inp)
 print(x.shape)
 # encoded = Dense(encoding_dim, activation='relu')(x)
-x = Dense(9, activation='relu')(x)
+x = Dense(10, activation='relu')(x)
 print(x.shape)
-x = Dense(6, activation='relu')(x)
+x = Dense(8, activation='relu')(x)
 print(x.shape)
 encoded = Dense(encoding_dim, activation='relu')(x)
 print(encoded.shape)
@@ -61,9 +62,9 @@ print(encoded.shape)
 # "decoded" is the lossy reconstruction of the input
 decoded = Dense(encoding_dim, activation='relu')(encoded)
 print(decoded.shape)
-decoded = Dense(6, activation='relu')(decoded)
+decoded = Dense(8, activation='relu')(decoded)
 print(decoded.shape)
-decoded = Dense(9, activation='relu')(decoded)
+decoded = Dense(10, activation='relu')(decoded)
 print(decoded.shape)
 decoded = Dense(origin_dim, activation='sigmoid')(decoded)
 print(decoded.shape)
@@ -77,7 +78,7 @@ autoencoder.compile(optimizer='adam', loss='mean_squared_error')
 
 # fit our autoencoder!
 history = autoencoder.fit(x_train, x_train,
-                epochs=1000,
+                epochs=100,
                 batch_size=16,
                 shuffle=True,
                 validation_data=(x_test, x_test))

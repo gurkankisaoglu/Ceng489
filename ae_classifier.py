@@ -10,18 +10,18 @@ from keras.models import load_model
 
 from keras.layers import Input, Dense
 from keras.models import Model
-
+from sklearn.metrics import classification_report
 import matplotlib.pyplot as plt
 
 batch_size = 32
 num_classes = 6
-epochs = 500
+epochs = 2
 data_augmentation = False
 
 # The data, shuffled and split between train and test sets:
 import numpy as np
 
-traffic = pd.read_csv("sdn_datasets/train/train.200.csv")
+traffic = pd.read_csv("sdn_datasets/train/train.400.csv")
 testtraffic = pd.read_csv("sdn_datasets/validation/val.100.csv")
 
 x_test = testtraffic.drop(["label"], axis=1)
@@ -46,7 +46,7 @@ y_test[y_test == "DoS"] = 5
 y_train = y_train.to_numpy()
 y_test = y_test.to_numpy()
 
-y_train = y_train.reshape(1200)
+y_train = y_train.reshape(2400)
 y_test = y_test.reshape(600)
 
 print('x_train shape:', x_train.shape)
@@ -64,7 +64,7 @@ x_test = x_test.astype('float32')
 x_train /= np.max(x_train)
 x_test /= np.max(x_test)
 
-encoding_dim = 10
+encoding_dim = 6
 origin_dim = 10
 
 # load autoencoder model
@@ -86,13 +86,13 @@ x = Dense(10, kernel_regularizer=keras.regularizers.l2(0.01))(x)
 # x = BatchNormalization()(x)
 x = Activation('relu')(x)
 # x = Activation('tanh')(x)
-# x = Activation('sigmoid')(x)
+#x = Activation('sigmoid')(x)
 
 x = Dense(10, kernel_regularizer=keras.regularizers.l2(0.01))(x)
 # x = BatchNormalization()(x)
 x = Activation('relu')(x)
 # x = Activation('tanh')(x)
-# x = Activation('sigmoid')(x)
+#x = Activation('sigmoid')(x)
 
 # x = Dense(8, kernel_regularizer=keras.regularizers.l2(0.01))(x)
 ##x = BatchNormalization()(x)
@@ -126,9 +126,11 @@ history = model.fit(tr_encoded_imgs, y_train,
                     validation_data=(te_encoded_imgs, y_test),  # validation_split=.3, #
                     shuffle=True)
 
-score = model.evaluate(te_encoded_imgs, y_test, verbose=0)
-print('Test loss:', score[0])
-print('Test accuracy:', score[1])
+y_pred = model.predict(te_encoded_imgs)
+y_pred = np.argmax(y_pred,axis=1)
+y_test = np.argmax(y_test,axis=1)
+
+print(classification_report(y_test, y_pred, labels=[0, 1, 2, 3, 4, 5]))
 
 print(history.history.keys())
 
