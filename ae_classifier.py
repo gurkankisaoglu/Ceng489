@@ -13,17 +13,21 @@ from keras.models import Model
 from sklearn.metrics import classification_report
 import matplotlib.pyplot as plt
 
+import numpy as np
+
+# Globally assigned the hyperparameters
 batch_size = 8
 num_classes = 6
 epochs = 5000
 data_augmentation = False
 
-# The data, shuffled and split between train and test sets:
-import numpy as np
+# The datasets are read from the csv files:
 
 traffic = pd.read_csv("sdn_datasets/train/train.200.csv")
 valtraffic = pd.read_csv("sdn_datasets/validation/val.100.csv")
 testtraffic = pd.read_csv("sdn_datasets/test/test.10000.csv")
+
+# Corresponding x and y values are extracted from dataset
 
 x_test = testtraffic.drop(["label"], axis=1)
 x_train = traffic.drop(["label"], axis=1)
@@ -31,6 +35,8 @@ x_val = valtraffic.drop(["label"], axis=1)
 y_test = testtraffic['label']
 y_train = traffic['label']
 y_val= valtraffic['label']
+
+# Y values are updated to contain integer values that corresponds to their class.
 
 y_train[y_train == "DDoS"] = 0
 y_train[y_train == "Port_Scanning"] = 1
@@ -61,10 +67,6 @@ y_train = y_train.reshape(1200)
 y_test = y_test.reshape(60000)
 y_val = y_val.reshape(600)
 
-# print('x_train shape:', x_train.shape)
-# print(x_train.shape[0], 'train samples')
-# print(x_test.shape[0], 'test samples')
-
 # Convert class vectors to binary class matrices.
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_val = keras.utils.to_categorical(y_val, num_classes)
@@ -82,19 +84,15 @@ x_val /= np.max(x_val)
 encoding_dim = 6
 origin_dim = 10
 
-# load autoencoder model
+# load deep autoencoder model
 encoder = load_model('trained_encoder_model.h5')
 
-
+# Encode the x values using deep autoencoder
 tr_encoded_imgs = encoder.predict(x_train)
-# print(tr_encoded_imgs.shape)
-
 te_encoded_imgs = encoder.predict(x_test)
-# print(te_encoded_imgs.shape)
-
 val_encoded_imgs = encoder.predict(x_val)
-#print(te_encoded_imgs.shape)
 
+# Creating the classifier model
 inp2 = keras.layers.Input(shape=(encoding_dim,))
 
 x = BatchNormalization()(inp2)
@@ -125,14 +123,15 @@ model = keras.models.Model(inputs=inp2, outputs=y)
 # model.add(Dense(num_classes))
 # model.add(Activation('softmax'))
 
-# initiate RMSprop optimizer
+# initiate Adam optimizer
+
 # opt = keras.optimizers.rmsprop(lr=0.000001, decay=1e-6)
 opt = keras.optimizers.Adam(lr=.00001)
 # opt = keras.optimizers.SGD(lr=.0000001,momentum=0.9,nesterov=True)
 
 # model = load_model('my_model.h5')
 
-# Let's train the model using RMSprop
+# Training of the model using Adam
 model.compile(loss='categorical_crossentropy',
               optimizer=opt,
               metrics=['accuracy'])
@@ -142,16 +141,17 @@ history = model.fit(tr_encoded_imgs, y_train,
                     epochs=epochs,
                     validation_data=(val_encoded_imgs, y_val),  # validation_split=.3, #
                     shuffle=True)
-
+# Predicting the results of test dataset using trained classifier.
 y_pred = model.predict(te_encoded_imgs)
 y_pred = np.argmax(y_pred,axis=1)
 y_test = np.argmax(y_test,axis=1)
 
+# Comparison of the prediction results and the expected results
 print(classification_report(y_test, y_pred, labels=[0, 1, 2, 3, 4, 5]))
 
 print(history.history.keys())
 
-# # summarize history for accuracy
+# plots for accuracy
 plt.plot(history.history['accuracy'])
 plt.plot(history.history['val_accuracy'])
 plt.title('model accuracy')
@@ -159,7 +159,7 @@ plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
 plt.show()
-# # summarize history for loss
+# plots for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.title('model loss')
