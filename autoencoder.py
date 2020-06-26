@@ -19,7 +19,7 @@ data_augmentation = False
 import numpy as np
 import h5py as hp
 
-traffic = pd.read_csv("sdn_datasets/train/train.400.csv")
+traffic = pd.read_csv("sdn_datasets/train/train.200.csv")
 testtraffic = pd.read_csv("sdn_datasets/validation/val.100.csv")
 #testtraffic = pd.read_csv("sdn_datasets/test/test.10000.csv")
 
@@ -78,7 +78,7 @@ autoencoder.compile(optimizer='adam', loss='mean_squared_error')
 
 # fit our autoencoder!
 history = autoencoder.fit(x_train, x_train,
-                epochs=100,
+                epochs=1000,
                 batch_size=16,
                 shuffle=True,
                 validation_data=(x_test, x_test))

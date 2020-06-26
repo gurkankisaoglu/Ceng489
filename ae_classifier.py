@@ -13,21 +13,24 @@ from keras.models import Model
 from sklearn.metrics import classification_report
 import matplotlib.pyplot as plt
 
-batch_size = 32
+batch_size = 8
 num_classes = 6
-epochs = 2
+epochs = 5000
 data_augmentation = False
 
 # The data, shuffled and split between train and test sets:
 import numpy as np
 
-traffic = pd.read_csv("sdn_datasets/train/train.400.csv")
-testtraffic = pd.read_csv("sdn_datasets/validation/val.100.csv")
+traffic = pd.read_csv("sdn_datasets/train/train.200.csv")
+valtraffic = pd.read_csv("sdn_datasets/validation/val.100.csv")
+testtraffic = pd.read_csv("sdn_datasets/test/test.10000.csv")
 
 x_test = testtraffic.drop(["label"], axis=1)
 x_train = traffic.drop(["label"], axis=1)
+x_val = valtraffic.drop(["label"], axis=1)
 y_test = testtraffic['label']
 y_train = traffic['label']
+y_val= valtraffic['label']
 
 y_train[y_train == "DDoS"] = 0
 y_train[y_train == "Port_Scanning"] = 1
@@ -43,26 +46,38 @@ y_test[y_test == "Normal"] = 3
 y_test[y_test == "Fuzzing"] = 4
 y_test[y_test == "DoS"] = 5
 
+y_val[y_val == "DDoS"] = 0
+y_val[y_val == "Port_Scanning"] = 1
+y_val[y_val == "OS_and_Service_Detection"] = 2
+y_val[y_val == "Normal"] = 3
+y_val[y_val == "Fuzzing"] = 4
+y_val[y_val == "DoS"] = 5
+
 y_train = y_train.to_numpy()
 y_test = y_test.to_numpy()
+y_val = y_val.to_numpy()
 
-y_train = y_train.reshape(2400)
-y_test = y_test.reshape(600)
+y_train = y_train.reshape(1200)
+y_test = y_test.reshape(60000)
+y_val = y_val.reshape(600)
 
-print('x_train shape:', x_train.shape)
-print(x_train.shape[0], 'train samples')
-print(x_test.shape[0], 'test samples')
+# print('x_train shape:', x_train.shape)
+# print(x_train.shape[0], 'train samples')
+# print(x_test.shape[0], 'test samples')
 
 # Convert class vectors to binary class matrices.
 y_train = keras.utils.to_categorical(y_train, num_classes)
+y_val = keras.utils.to_categorical(y_val, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
 inp = keras.layers.Input(shape=(10,))
 
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
+x_val = x_val.astype('float32')
 x_train /= np.max(x_train)
 x_test /= np.max(x_test)
+x_val /= np.max(x_val)
 
 encoding_dim = 6
 origin_dim = 10
@@ -71,12 +86,14 @@ origin_dim = 10
 encoder = load_model('trained_encoder_model.h5')
 
 
-
 tr_encoded_imgs = encoder.predict(x_train)
-print(tr_encoded_imgs.shape)
+# print(tr_encoded_imgs.shape)
 
 te_encoded_imgs = encoder.predict(x_test)
-print(te_encoded_imgs.shape)
+# print(te_encoded_imgs.shape)
+
+val_encoded_imgs = encoder.predict(x_val)
+#print(te_encoded_imgs.shape)
 
 inp2 = keras.layers.Input(shape=(encoding_dim,))
 
@@ -123,7 +140,7 @@ model.compile(loss='categorical_crossentropy',
 history = model.fit(tr_encoded_imgs, y_train,
                     batch_size=batch_size,
                     epochs=epochs,
-                    validation_data=(te_encoded_imgs, y_test),  # validation_split=.3, #
+                    validation_data=(val_encoded_imgs, y_val),  # validation_split=.3, #
                     shuffle=True)
 
 y_pred = model.predict(te_encoded_imgs)
